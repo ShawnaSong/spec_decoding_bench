@@ -6,21 +6,16 @@ import numpy as np
 
 def speed(jsonl_file, jsonl_file_base, tokenizer, task=None, report=True):
     tokenizer = AutoTokenizer.from_pretrained(tokenizer)
-    mt_bench_list = ["writing", "roleplay", "reasoning", "math", "coding", "extraction", "stem", "humanities"]
 
     def load_and_filter(path):
         data = []
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
                 j = json.loads(line)
-                if task == "overall":
+                if task is None or task == "overall":
                     data.append(j)
-                elif task == "mt_bench":
-                    if j["category"] in mt_bench_list:
-                        data.append(j)
-                else:
-                    if j["category"] == task:
-                        data.append(j)
+                elif j["category"] == task:
+                    data.append(j)
         return data
 
     data = load_and_filter(jsonl_file)
@@ -51,10 +46,19 @@ def speed(jsonl_file, jsonl_file_base, tokenizer, task=None, report=True):
     return tps, tps_base, ratio
 
 
-def get_all_tasks(jsonl_file, jsonl_file_base, tokenizer_path):
-    tasks = ["mt_bench", "translation", "summarization", "qa", "math_reasoning", "rag", "overall"]
-    for task in tasks:
-        speed(jsonl_file, jsonl_file_base, tokenizer_path, task=task)
+def get_all_categories(jsonl_file, jsonl_file_base, tokenizer_path):
+    categories = set()
+    with open(jsonl_file, "r", encoding="utf-8") as f:
+        for line in f:
+            j = json.loads(line)
+            if "category" in j:
+                categories.add(j["category"])
+
+    categories = sorted(categories)
+    categories.append("overall")
+
+    for cat in categories:
+        speed(jsonl_file, jsonl_file_base, tokenizer_path, task=cat)
 
 
 if __name__ == "__main__":
@@ -64,4 +68,4 @@ if __name__ == "__main__":
     parser.add_argument("--tokenizer-path", type=str, required=True, help="Tokenizer path or HuggingFace model ID")
     args = parser.parse_args()
 
-    get_all_tasks(args.file_path, args.base_path, args.tokenizer_path)
+    get_all_categories(args.file_path, args.base_path, args.tokenizer_path)
